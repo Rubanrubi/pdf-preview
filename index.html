@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>PDF Page Viewer</title>
+  <!-- Include PDF.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+</head>
+
+<body>
+  <!-- Placeholder for displaying PDF pages -->
+  <div id="pdf-container"></div>
+
+  <script>
+    // Specify the workerSrc explicitly
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+    // Function to load and display PDF pages by pdf file blob url
+    function loadPdf(url) {
+      fetch(url)
+        .then(response => response.arrayBuffer())
+        .then(arrayBuffer => {
+          // Load the PDF arrayBuffer using PDF.js
+          return pdfjsLib.getDocument(arrayBuffer).promise;
+        })
+        .then(pdf => {
+          console.log('PDF', pdf.numPages);
+          // Display each page of the PDF
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            pdf.getPage(pageNum).then(page => {
+              // Set scale for rendering the page
+              let scale = 1.5;
+              let viewport = page.getViewport({ scale: scale });
+
+              // Create a canvas element to display the page
+              let canvas = document.createElement('canvas');
+              let context = canvas.getContext('2d');
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+
+              // Render the page on the canvas
+              let renderContext = {
+                canvasContext: context,
+                viewport: viewport
+              };
+              let renderTask = page.render(renderContext);
+              // Convert the canvas to base64 image
+              renderTask.promise.then(() => {
+                let imgData = canvas.toDataURL('image/jpeg');
+                let img = document.createElement('img');
+                img.src = imgData;
+                // Append the image to the PDF container
+                document.getElementById('pdf-container').appendChild(img);
+              });
+
+              // Render canvas directly into webpage
+              // console.log(' rendering', renderContext);
+              // page.render(renderContext).promise.then(() => {
+              //   console.log('canvas', canvas);
+              //   // Append the canvas to the PDF container
+              //   document.getElementById('pdf-container').appendChild(canvas);
+              // });
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error loading PDF: ', error);
+        });
+    }
+
+    const contentType = "application/pdf";
+    const b64Data = localStorage.getItem('translated-file'); // Replace this with your base64String
+    const blob = this.b64toBlob(b64Data, contentType);
+    const blobUrl = URL.createObjectURL(blob);
+    // Call the function with the URL of the PDF blob
+    loadPdf(blobUrl);
+
+    function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+      var byteCharacters = atob(b64Data);
+      var byteArrays = [];
+
+      for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        var slice = byteCharacters.slice(offset, offset + sliceSize),
+          byteNumbers = new Array(slice.length);
+        for (var i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        var byteArray = new Uint8Array(byteNumbers);
+
+        byteArrays.push(byteArray);
+      }
+
+      var blob = new Blob(byteArrays, { type: contentType });
+      return blob;
+    }
+  </script>
+</body>
+
+</html>
